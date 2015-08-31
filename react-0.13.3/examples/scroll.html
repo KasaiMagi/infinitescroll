@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv='Content-type' content='text/html; charset=utf-8'>
+    <title>Basic Example with JSX</title>
+    <link rel="stylesheet" href="./shared/css/base.css" />
+    <link rel="stylesheet" href="./scroll.css" />
+  </head>
+  <body>
+    <h1>Basic Example with JSX</h1>
+    <div id="container">
+    </div>
+    <script src="./shared/thirdparty/es5-shim.min.js"></script>
+    <script src="./shared/thirdparty/es5-sham.min.js"></script>
+    <script src="./shared/thirdparty/console-polyfill.js"></script>
+    <script src="./shared/thirdparty/lodash.min.js"></script>
+    <script src="./../build/react.js"></script>
+    <script src="./../build/JSXTransformer.js"></script>
+    <script type="text/jsx">
+      var MAX_LOAD = 300;
+
+      var generateItems = function(count) {
+        return Array.apply(null, Array(count)).map(_.random.bind(null, 100000, 999999))
+      }
+
+      var ExampleApplication = React.createClass({
+        getInitialState: function() {
+          var items = generateItems(100)
+          return {
+            items: items,
+            loadNextLoading: false,
+            loadPrevLoading: false
+          }
+        },
+
+        render: function() {
+          return (
+            <div>
+              <InfiniteList
+                items={this.state.items}
+                onLoadNextPage={this.onLoadNextPage}
+                onLoadPrevPage={this.onLoadPrevPage} />
+            </div>
+          );
+        },
+
+        onLoadNextPage: function() {
+          if (!this.state.loadNextLoading) {
+            console.log('loading next page...');
+            console.log('count: ' + this.state.items.length);
+            _.delay(function() {
+              var newItems = generateItems(50);
+              var items = this.state.items.concat(newItems);
+              if (items.length > MAX_LOAD) {
+                items = items.slice(items.length - MAX_LOAD)
+              }
+
+              this.setState({
+                loadNextLoading: false,
+                items: items
+              })
+            }.bind(this), 1000)
+
+            this.setState({
+              loadNextLoading: true
+            })
+          }
+        },
+
+        onLoadPrevPage: function() {
+          if (!this.state.loadPrevLoading) {
+            console.log('loading prev page...');
+            console.log('count: ' + this.state.items.length);
+            _.delay(function() {
+              var newItems = generateItems(100);
+              var items = newItems.concat(this.state.items);
+              if (items.length > MAX_LOAD) {
+                items = items.slice(0, MAX_LOAD)
+              }
+
+              this.setState({
+                loadPrevLoading: false,
+                items: items
+              })
+            }.bind(this), 1000)
+
+            this.setState({
+              loadPrevLoading: true
+            })
+          }
+        }
+      });
+
+      var InfiniteList = React.createClass({
+        componentDidMount: function() {
+          this.throttledScrollListener = _.throttle(this.handleScroll, 100)
+
+          this.getDOMNode().addEventListener('scroll', this.throttledScrollListener)
+        },
+
+        componentWillUnmount: function() {
+          this.getDOMNode().removeEventListener('scroll', this.throttledScrollListener);
+        },
+
+        render: function() {
+          var items = this.props.items.map(function(item) {
+            return (
+              <div key={item} className="media">
+                <div className="media__body">
+                  {item}
+                </div>
+              </div>
+            );
+          });
+
+          return (
+            <div className="infinite-list">
+              {items}
+            </div>
+          )
+        },
+
+        handleScroll: function(event) {
+          var o = this.getDOMNode();
+          if (o.scrollTop < 100) {
+            this.props.onLoadPrevPage();
+          }
+
+          if (o.scrollHeight - o.offsetHeight - o.scrollTop < 100) {
+            this.props.onLoadNextPage();
+          }
+        }
+      });
+
+      React.render(
+        <ExampleApplication />,
+        document.getElementById('container')
+      );
+
+    </script>
+  </body>
+</html>
